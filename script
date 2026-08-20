@@ -1,0 +1,1345 @@
+[script.js](https://github.com/user-attachments/files/31257623/script.js)
+// ข้อมูลสินค้าเกมมิ่งเกียร์ แยกตามหมวดหมู่และแบรนด์
+
+let products = [];
+
+// ฟังก์ชันดึงข้อมูลสินค้าจากคอลเลกชัน "products" ใน Firebase
+async function fetchProductsFromFirebase() {
+    try {
+        const snapshot = await db.collection("products").get();
+
+        // แปลงข้อมูลจาก Firebase มาใส่ในตัวแปร products
+        products = snapshot.docs.map(doc => ({
+            firestoreId: doc.id, // รหัสเอกสารอ้างอิงของ Firebase
+            ...doc.data()
+        }));
+
+        // Render หน้าเว็บตามฟังก์ชันเดิมของคุณ
+        if (typeof renderProducts === 'function') {
+            renderProducts(products, 'allProductsGrid');
+        }
+        if (typeof renderAllTypedSections === 'function') {
+            renderAllTypedSections();
+        }
+        if (typeof renderGamingGearGrid === 'function') {
+            renderGamingGearGrid();
+        }
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการดึงข้อมูลจาก Firebase:", error);
+    }
+}
+
+// ==========================================
+// i18n TRANSLATION SYSTEM (ระบบสลับภาษา 4 ภาษา)
+// ==========================================
+let currentLang = 'th';
+
+// รายการลำดับการสลับภาษา
+const langOrder = ['th', 'en', 'zh', 'ru'];
+
+const translations = {
+    th: {
+        topTagline: "COMPUNG - ถ้าคุณชอบคอมพิวเตอร์ เราคือเพื่อนกัน",
+        findStore: "ค้นหาร้านใกล้คุณ",
+        searchPlaceholder: "ค้นหาสินค้า เกมมิ่งเกียร์ สเปกคอม...",
+        loginRegister: "เข้าสู่ระบบ / สมัครสมาชิก",
+        logout: "ออกจากระบบ",
+        allProducts: "สินค้าทั้งหมด",
+        catMouse: "เมาส์",
+        catKeyboard: "คีย์บอร์ด",
+        catHeadset: "หูฟัง",
+        catNotebook: "โน้ตบุ๊ก",
+        catMonitor: "จอภาพ",
+        adminManage: "จัดการสินค้า (Admin)",
+        recommendedProducts: "รายการสินค้าแนะนำ",
+        hotProducts: "รายการสินค้ายอดฮิต",
+        normalProducts: "สินค้าทั่วไป",
+        flashSaleProducts: "สินค้า Flash Sale",
+        allProductsSection: "สินค้าทั้งหมด",
+        allProductsSubtitle: "เลือกชมสินค้าทุกรายการในร้านของเรา",
+        gamingGearSection: "อุปกรณ์เกมมิ่งเกียร์ทุกชนิด",
+        gamingGearSubtitle: "รวมเกมมิ่งเกียร์ครบทุกหมวด คีย์บอร์ด เมาส์ หูฟัง เก้าอี้ และอีกมากมาย",
+        cartTitle: "ตะกร้าสินค้า",
+        totalPrice: "ราคารวมทั้งหมด:",
+        checkoutBtn: "สั่งซื้อสินค้า",
+
+        // Auth Modal
+        loginTitle: "เข้าสู่ระบบ",
+        registerTitle: "สมัครสมาชิก",
+        forgotTitle: "ลืมรหัสผ่าน",
+        userOrEmailLabel: "อีเมล / ชื่อผู้ใช้",
+        emailLabel: "อีเมล (Email)",
+        passwordLabel: "รหัสผ่าน",
+        forgotPassword: "ลืมรหัสผ่าน?",
+        submitBtn: "ตกลง",
+        sendPinBtn: "ส่งรหัส PIN 6 หลัก",
+        noAccountText: "ยังไม่มีบัญชีใช่ไหม?",
+        hasAccountText: "มีบัญชีอยู่แล้วใช่ไหม?",
+        registerToggleBtn: "สมัครสมาชิก",
+        loginToggleBtn: "เข้าสู่ระบบ",
+        enterPinLabel: "กรอกรหัส PIN 6 หลักที่ส่งไปยังอีเมล",
+        newPasswordLabel: "ตั้งรหัสผ่านใหม่",
+        confirmResetBtn: "ยืนยันการเปลี่ยนรหัสผ่าน",
+
+        // Admin Modal
+        createProductTitle: "เพิ่มสินค้าใหม่ (Create Product)",
+        editProductTitle: "แก้ไขข้อมูลสินค้า (Edit Product)",
+        pNameLabel: "ชื่อสินค้า",
+        pCatLabel: "หมวดหมู่",
+        pSubCatLabel: "ชนิดสินค้า",
+        pSubNormal: "สินค้าทั่วไป",
+        pSubRecommended: "สินค้าแนะนำ",
+        pSubHot: "สินค้ายอดฮิต",
+        pSubFlashsale: "สินค้า Flash Sale",
+        pBrandLabel: "แบรนด์/ค่าย",
+        pOldPriceLabel: "ราคาปกติ (บาท)",
+        pPriceLabel: "ราคาขายจริง (บาท)",
+        pSpecsLabel: "รายละเอียด/สเปกย่อ",
+        pImgLabel: "URL รูปภาพสินค้า",
+        pWarrantyLabel: "ประกัน",
+        catSpeaker: "ลำโพง (Speaker)",
+        catMicrophone: "ไมโครโฟน (Microphone)",
+        catChair: "เก้าอี้ (Chair)",
+        catDesk: "โต๊ะ (Desk)",
+        catMousepad: "แผ่นรองเมาส์ (Mouse pad)",
+        catCooling: "ระบบระบายความร้อน (Cooling)",
+        catStreaming: "อุปกรณ์สตรีมมิ่ง (Streaming)",
+        catVr: "อุปกรณ์ VR (VR)",
+        catRacing: "อุปกรณ์แข่งรถ (Racing Setup)",
+        saveBtn: "บันทึกข้อมูลสินค้า",
+        cancelBtn: "ยกเลิก",
+
+        // Product Cards
+        addToCart: "ใส่ตะกร้า",
+        buyNow: "ซื้อเลย",
+        noProductFound: "ไม่พบสินค้าที่คุณกำลังค้นหา",
+        cartEmpty: "ตะกร้าสินค้ายังว่างอยู่"
+    },
+    en: {
+        topTagline: "COMPUNG - If you love computers, we are friends.",
+        findStore: "Find nearby stores",
+        searchPlaceholder: "Search products, gaming gear, PC specs...",
+        loginRegister: "Login / Register",
+        logout: "Logout",
+        allProducts: "All Products",
+        catMouse: "Mouse",
+        catKeyboard: "Keyboard",
+        catHeadset: "Headset",
+        catNotebook: "Laptop",
+        catMonitor: "Monitor",
+        adminManage: "Manage Products (Admin)",
+        recommendedProducts: "Recommended Products",
+        hotProducts: "Best-Selling Products",
+        normalProducts: "General Products",
+        flashSaleProducts: "Flash Sale",
+        allProductsSection: "All Products",
+        allProductsSubtitle: "Browse every item available in our store",
+        gamingGearSection: "All Types of Gaming Gear",
+        gamingGearSubtitle: "Keyboards, mice, headsets, chairs, and everything a gamer needs",
+        cartTitle: "Shopping Cart",
+        totalPrice: "Total Price:",
+        checkoutBtn: "Checkout",
+
+        // Auth Modal
+        loginTitle: "Login",
+        registerTitle: "Register",
+        forgotTitle: "Forgot Password",
+        userOrEmailLabel: "Email / Username",
+        emailLabel: "Email Address",
+        passwordLabel: "Password",
+        forgotPassword: "Forgot Password?",
+        submitBtn: "Submit",
+        sendPinBtn: "Send 6-Digit PIN",
+        noAccountText: "Don't have an account?",
+        hasAccountText: "Already have an account?",
+        registerToggleBtn: "Register",
+        loginToggleBtn: "Login",
+        enterPinLabel: "Enter 6-digit PIN sent to email",
+        newPasswordLabel: "New Password",
+        confirmResetBtn: "Confirm Password Reset",
+
+        // Admin Modal
+        createProductTitle: "Create Product",
+        editProductTitle: "Edit Product",
+        pNameLabel: "Product Name",
+        pCatLabel: "Category",
+        pSubCatLabel: "Product Type",
+        pSubNormal: "General Product",
+        pSubRecommended: "Recommended",
+        pSubHot: "Best Seller",
+        pSubFlashsale: "Flash Sale",
+        pBrandLabel: "Brand",
+        pOldPriceLabel: "Regular Price (THB)",
+        pPriceLabel: "Sale Price (THB)",
+        pSpecsLabel: "Specifications",
+        pImgLabel: "Product Image URL",
+        pWarrantyLabel: "Warranty",
+        catSpeaker: "Speaker",
+        catMicrophone: "Microphone",
+        catChair: "Chair",
+        catDesk: "Desk",
+        catMousepad: "Mouse Pad",
+        catCooling: "Cooling",
+        catStreaming: "Streaming Gear",
+        catVr: "VR Equipment",
+        catRacing: "Racing Setup",
+        saveBtn: "Save Product",
+        cancelBtn: "Cancel",
+
+        // Product Cards
+        addToCart: "Add to Cart",
+        buyNow: "Buy Now",
+        noProductFound: "No products found",
+        cartEmpty: "Your cart is empty"
+    },
+    zh: {
+        topTagline: "COMPUNG - 如果你喜欢电脑，我们就是朋友",
+        findStore: "查找附近门店",
+        searchPlaceholder: "搜索商品、电竞外设、电脑配置...",
+        loginRegister: "登录 / 注册",
+        logout: "退出登录",
+        allProducts: "所有商品",
+        catMouse: "鼠标",
+        catKeyboard: "键盘",
+        catHeadset: "耳机",
+        catNotebook: "笔记本电脑",
+        catMonitor: "显示器",
+        adminManage: "商品管理 (管理员)",
+        recommendedProducts: "推荐商品",
+        hotProducts: "热销商品",
+        normalProducts: "全部商品",
+        flashSaleProducts: "限时抢购",
+        allProductsSection: "所有商品",
+        allProductsSubtitle: "浏览我们商店中的所有商品",
+        gamingGearSection: "各类电竞外设",
+        gamingGearSubtitle: "涵盖键盘、鼠标、耳机、电竞椅等全套游戏设备",
+        cartTitle: "购物车",
+        totalPrice: "总计金额:",
+        checkoutBtn: "结算",
+
+        // Auth Modal
+        loginTitle: "登录",
+        registerTitle: "注册账户",
+        forgotTitle: "忘记密码",
+        userOrEmailLabel: "邮箱 / 用户名",
+        emailLabel: "电子邮箱",
+        passwordLabel: "密码",
+        forgotPassword: "忘记密码？",
+        submitBtn: "提交",
+        sendPinBtn: "发送 6 位 PIN 码",
+        noAccountText: "还没有账户？",
+        hasAccountText: "已有账户？",
+        registerToggleBtn: "注册",
+        loginToggleBtn: "登录",
+        enterPinLabel: "输入发送至邮箱的 6 位 PIN 码",
+        newPasswordLabel: "设置新密码",
+        confirmResetBtn: "确认重置密码",
+
+        // Admin Modal
+        createProductTitle: "添加新商品",
+        editProductTitle: "编辑商品信息",
+        pNameLabel: "商品名称",
+        pCatLabel: "商品分类",
+        pSubCatLabel: "商品类型",
+        pSubNormal: "普通商品",
+        pSubRecommended: "推荐商品",
+        pSubHot: "热销商品",
+        pSubFlashsale: "限时抢购",
+        pBrandLabel: "品牌",
+        pOldPriceLabel: "原价 (泰铢)",
+        pPriceLabel: "现价 (泰铢)",
+        pSpecsLabel: "规格 / 简述",
+        pImgLabel: "商品图片 URL",
+        pWarrantyLabel: "保修",
+        catSpeaker: "音箱",
+        catMicrophone: "麦克风",
+        catChair: "电竞椅",
+        catDesk: "电竞桌",
+        catMousepad: "鼠标垫",
+        catCooling: "散热系统",
+        catStreaming: "直播设备",
+        catVr: "VR 设备",
+        catRacing: "赛车模拟设备",
+        saveBtn: "保存商品",
+        cancelBtn: "取消",
+
+        // Product Cards
+        addToCart: "加入购物车",
+        buyNow: "立即购买",
+        noProductFound: "未找到您搜索的商品",
+        cartEmpty: "购物车是空的"
+    },
+    ru: {
+        topTagline: "COMPUNG — Если вы любите компьютеры, мы друзья.",
+        findStore: "Найти магазин поблизости",
+        searchPlaceholder: "Поиск товаров, игровых устройств, ПК...",
+        loginRegister: "Вход / Регистрация",
+        logout: "Выйти",
+        allProducts: "Все товары",
+        catMouse: "Мыши",
+        catKeyboard: "Клавиатуры",
+        catHeadset: "Наушники",
+        catNotebook: "Ноутбуки",
+        catMonitor: "Мониторы",
+        adminManage: "Управление (Админ)",
+        recommendedProducts: "Рекомендуемые товары",
+        hotProducts: "Хиты продаж",
+        normalProducts: "Обычные товары",
+        flashSaleProducts: "Флэш-распродажа",
+        allProductsSection: "Все товары",
+        allProductsSubtitle: "Просмотрите все товары в нашем магазине",
+        gamingGearSection: "Все виды игрового оборудования",
+        gamingGearSubtitle: "Клавиатуры, мыши, гарнитуры, кресла и всё для геймеров",
+        cartTitle: "Корзина",
+        totalPrice: "Итоговая сумма:",
+        checkoutBtn: "Оформить заказ",
+
+        // Auth Modal
+        loginTitle: "Вход",
+        registerTitle: "Регистрация",
+        forgotTitle: "Забыли пароль",
+        userOrEmailLabel: "Email / Имя пользователя",
+        emailLabel: "Электронная почта",
+        passwordLabel: "Пароль",
+        forgotPassword: "Забыли пароль?",
+        submitBtn: "Отправить",
+        sendPinBtn: "Отправить 6-значный PIN",
+        noAccountText: "Нет аккаунта?",
+        hasAccountText: "Уже есть аккаунт?",
+        registerToggleBtn: "Регистрация",
+        loginToggleBtn: "Вход",
+        enterPinLabel: "Введите 6-значный PIN из email",
+        newPasswordLabel: "Новый пароль",
+        confirmResetBtn: "Подтвердить сброс пароля",
+
+        // Admin Modal
+        createProductTitle: "Добавить товар",
+        editProductTitle: "Редактировать товар",
+        pNameLabel: "Название товара",
+        pCatLabel: "Категория",
+        pSubCatLabel: "Тип товара",
+        pSubNormal: "Обычный товар",
+        pSubRecommended: "Рекомендуемый",
+        pSubHot: "Хит продаж",
+        pSubFlashsale: "Флэш-распродажа",
+        pBrandLabel: "Бренд",
+        pOldPriceLabel: "Обычная цена (THB)",
+        pPriceLabel: "Цена со скидкой (THB)",
+        pSpecsLabel: "Характеристики",
+        pImgLabel: "URL изображения товара",
+        pWarrantyLabel: "Гарантия",
+        catSpeaker: "Колонки",
+        catMicrophone: "Микрофон",
+        catChair: "Кресло",
+        catDesk: "Стол",
+        catMousepad: "Коврик для мыши",
+        catCooling: "Охлаждение",
+        catStreaming: "Оборудование для стрима",
+        catVr: "VR-оборудование",
+        catRacing: "Гоночный симулятор",
+        saveBtn: "Сохранить товар",
+        cancelBtn: "Отмена",
+
+        // Product Cards
+        addToCart: "В корзину",
+        buyNow: "Купить",
+        noProductFound: "Товары не найдены",
+        cartEmpty: "Ваша корзина пуста"
+    }
+};
+
+function toggleLanguage() {
+    // วนสลับภาษาตามลำดับ: th -> en -> zh -> ru -> th
+    const nextIndex = (langOrder.indexOf(currentLang) + 1) % langOrder.length;
+    currentLang = langOrder[nextIndex];
+
+    const langLabel = document.getElementById('langLabel');
+    if (langLabel) {
+        langLabel.innerText = currentLang.toUpperCase();
+    }
+
+    // แปลข้อความที่มี attribute data-i18n
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[currentLang] && translations[currentLang][key]) {
+            el.innerText = translations[currentLang][key];
+        }
+    });
+
+    // แปล Placeholder
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+        const key = el.getAttribute('data-i18n-ph');
+        if (translations[currentLang] && translations[currentLang][key]) {
+            el.placeholder = translations[currentLang][key];
+        }
+    });
+
+    // Re-render รายการสินค้าและตะกร้าใหม่เพื่ออัปเดตภาษาที่ปุ่ม
+    if (typeof products !== 'undefined') {
+        renderProducts(products, 'allProductsGrid');
+    }
+    if (typeof renderAllTypedSections === 'function') {
+        renderAllTypedSections();
+    }
+    if (typeof renderGamingGearGrid === 'function') {
+        renderGamingGearGrid();
+    }
+    if (typeof renderCartItems === 'function') {
+        renderCartItems();
+    }
+}
+
+// ==========================================
+// PRODUCT RENDER & FILTER SYSTEM
+// ==========================================
+let cart = [];
+let currentCategory = 'all';
+let currentBrand = 'all';
+
+document.addEventListener('DOMContentLoaded', () => {
+    // โหลดข้อมูลสินค้าจาก Firebase ทันทีที่เปิดหน้าเว็บ
+    fetchProductsFromFirebase();
+
+    // เรียกฟังก์ชันเดิมของคุณเพิ่มเติม (ถ้ามี)
+    if (typeof updateCartCount === 'function') {
+        updateCartCount();
+    }
+});
+
+function renderProducts(items, gridId = 'productGrid') {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+
+    if (items.length === 0) {
+        grid.innerHTML = `<div class="w-full text-center py-12 text-gray-400">${translations[currentLang].noProductFound}</div>`;
+        return;
+    }
+
+    grid.innerHTML = items.map(p => {
+        const hasDiscount = p.oldPrice > p.price;
+        const discountAmount = hasDiscount ? (p.oldPrice - p.price) : 0;
+        const warranty = p.warranty || '1Y';
+        const sold = p.sold || 0;
+        const soldLabel = sold >= 1000 ? (sold / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : sold;
+
+        return `
+        <div class="product-card w-64 flex-shrink-0 bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col hover:border-cyan-500/60 hover:-translate-y-1 transition-all duration-300 group shadow-lg relative">
+
+            <!-- Admin quick actions -->
+            <div class="absolute top-3 right-3 z-10 flex gap-1.5 opacity-0 group-hover:opacity-100 transition duration-200">
+                <button onclick="editProduct(${p.id})" title="แก้ไข" class="bg-slate-950/80 hover:bg-amber-500 hover:text-slate-950 text-amber-400 backdrop-blur-md w-7 h-7 rounded-lg flex items-center justify-center text-xs shadow-md transition">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="deleteProduct(${p.id})" title="ลบสินค้า" class="bg-slate-950/80 hover:bg-red-500 hover:text-white text-red-400 backdrop-blur-md w-7 h-7 rounded-lg flex items-center justify-center text-xs shadow-md transition">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+
+            <!-- Brand logo row -->
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] font-bold text-cyan-500 uppercase tracking-wide">${p.brand}</span>
+            </div>
+
+            <!-- Product image -->
+            <div class="relative overflow-hidden rounded-xl mb-3 bg-slate-950/50 h-36 w-full flex items-center justify-center shrink-0">
+                <img src="${p.img}" alt="${p.name}" class="object-contain w-full h-full p-2 group-hover:scale-105 transition duration-500">
+            </div>
+
+            <h3 class="font-bold text-sm text-white line-clamp-2 h-10 mb-1 leading-tight group-hover:text-cyan-400 transition" title="${p.name}">
+                ${p.name}
+            </h3>
+
+            <p class="text-xs text-gray-400 line-clamp-2 h-8 mb-2 leading-normal" title="${p.specs}">
+                ${p.specs}
+            </p>
+
+            <!-- Price block -->
+            <div class="mt-1">
+                <div class="flex justify-between items-center h-4 mb-0.5">
+                    ${hasDiscount ? `<span class="text-xs text-gray-500 line-through">฿${p.oldPrice.toLocaleString()}</span>` : `<span></span>`}
+                    <span class="warranty-badge flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                        <i class="fa-solid fa-shield-halved text-cyan-400"></i> ประกัน ${warranty}
+                    </span>
+                </div>
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-xl font-black text-cyan-400">฿${p.price.toLocaleString()}</span>
+                    <span class="text-[10px] text-emerald-500 font-semibold">จัดส่งฟรี</span>
+                </div>
+            </div>
+
+            <!-- Discount badge + wishlist/compare -->
+            <div class="flex items-center justify-between mb-2.5">
+                ${hasDiscount ? `<span class="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">-฿${discountAmount.toLocaleString()}</span>` : `<span class="text-[10px] text-gray-500">*ราคาเฉพาะออนไลน์</span>`}
+                <div class="flex gap-2 text-gray-400">
+                    <button title="เพิ่มในรายการโปรด" class="hover:text-red-400 transition text-sm"><i class="fa-regular fa-heart"></i></button>
+                    <button title="เปรียบเทียบ" class="hover:text-cyan-400 transition text-sm"><i class="fa-solid fa-arrows-rotate"></i></button>
+                </div>
+            </div>
+
+            <!-- Buy button -->
+            <button onclick="addToCart(${p.id})" class="buy-btn w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-md shadow-cyan-500/20 transition duration-200">
+                <i class="fa-solid fa-cart-shopping"></i> ${translations[currentLang].buyNow}
+            </button>
+
+            <!-- Sold count -->
+            <div class="text-center text-[10px] text-gray-500 mt-2 flex items-center justify-center gap-1">
+                <i class="fa-regular fa-eye"></i> ${soldLabel}
+            </div>
+        </div>
+    `;
+    }).join('');
+}
+
+// ==========================================
+// PRODUCT TYPE SECTIONS (สินค้าทั่วไป / แนะนำ / ยอดฮิต / Flash Sale)
+// ==========================================
+
+// ดึงสินค้าตามชนิด (productType) ที่ตั้งค่าไว้ในหน้า Admin
+// ถ้าสินค้าเก่าไม่มีค่า productType จะถือว่าเป็น "สินค้าทั่วไป" (normal) โดยปริยาย
+function getProductsByType(type) {
+    if (typeof products === 'undefined' || !Array.isArray(products)) return [];
+    return products.filter(p => (p.productType || 'normal') === type);
+}
+
+// สินค้าทั่วไป -> #normalProductGrid
+function renderNormalProducts() {
+    renderProducts(getProductsByType('normal'), 'normalProductGrid');
+}
+
+// สินค้าแนะนำ -> #productGrid
+function renderRecommendedProducts() {
+    renderProducts(getProductsByType('recommended'), 'productGrid');
+}
+
+// สินค้ายอดฮิต -> #hotProductGrid (เรียงตามยอดขายมากไปน้อยภายในกลุ่มที่ติดแท็ก "ยอดฮิต")
+function renderHotProducts() {
+    const hotList = getProductsByType('hot')
+        .sort((a, b) => (b.sold || 0) - (a.sold || 0));
+    renderProducts(hotList, 'hotProductGrid');
+}
+
+// สินค้า Flash Sale -> #flashSaleProductGrid
+function renderFlashSaleProducts() {
+    renderProducts(getProductsByType('flashsale'), 'flashSaleProductGrid');
+}
+
+// เรียก Render ทุกโซนตามชนิดสินค้าพร้อมกันทีเดียว
+function renderAllTypedSections() {
+    renderNormalProducts();
+    renderRecommendedProducts();
+    renderHotProducts();
+    renderFlashSaleProducts();
+}
+
+// ==========================================
+// GAMING GEAR SECTION (กริดสินค้าด้านล่างสุดของเว็บ)
+// ==========================================
+const gamingGearIds = Array.from({ length: 40 }, (_, i) => i + 7); // id 7-46
+
+function renderGamingGearGrid() {
+    const grid = document.getElementById('gamingGearGrid');
+    if (!grid) return;
+
+    // อ่านค่าหมวดหมู่จาก attribute data-category ในแท็ก <body> (เช่น mouse, keyboard, headset)
+    const pageCategory = document.body.getAttribute('data-category');
+
+    let items = products;
+
+    // กรองสินค้าตามหมวดหมู่ของหน้านั้นๆ
+    if (pageCategory && pageCategory !== 'all') {
+        items = products.filter(p => p.category === pageCategory);
+    }
+
+    if (items.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400">ไม่พบสินค้าในหมวดหมู่นี้</div>`;
+        return;
+    }
+
+    grid.innerHTML = items.map(p => {
+        const hasDiscount = p.oldPrice > p.price;
+        const discountAmount = hasDiscount ? (p.oldPrice - p.price) : 0;
+        const warranty = p.warranty || '1Y';
+        const sold = p.sold || 0;
+        const soldLabel = sold >= 1000 ? (sold / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : sold;
+
+        return `
+        <div class="product-card w-full bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col hover:border-cyan-500/60 hover:-translate-y-1 transition-all duration-300 group shadow-lg relative">
+
+            <!-- Admin quick actions -->
+            <div class="absolute top-3 right-3 z-10 flex gap-1.5 opacity-0 group-hover:opacity-100 transition duration-200">
+            <button onclick="editProduct('${p.id}')" title="แก้ไข" class="bg-slate-950/80 hover:bg-amber-500 hover:text-slate-950 text-amber-400 backdrop-blur-md w-7 h-7 rounded-lg flex items-center justify-center text-xs shadow-md transition">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+                <button onclick="deleteProduct('${p.id}')" title="ลบสินค้า" class="bg-slate-950/80 hover:bg-red-500 hover:text-white text-red-400 backdrop-blur-md w-7 h-7 rounded-lg flex items-center justify-center text-xs shadow-md transition">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+
+            <!-- Brand logo row -->
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] font-bold text-cyan-500 uppercase tracking-wide">${p.brand}</span>
+                <span class="text-[9px] font-mono text-slate-500">${p.id}</span>
+            </div>
+
+            <!-- Product image -->
+            <div class="relative overflow-hidden rounded-xl mb-3 bg-slate-950/50 h-36 w-full flex items-center justify-center shrink-0">
+                <img src="${p.img}" alt="${p.name}" class="object-contain w-full h-full p-2 group-hover:scale-105 transition duration-500">
+            </div>
+
+            <h3 class="font-bold text-sm text-white line-clamp-2 h-10 mb-1 leading-tight group-hover:text-cyan-400 transition" title="${p.name}">
+                ${p.name}
+            </h3>
+
+            <p class="text-xs text-gray-400 line-clamp-2 h-8 mb-2 leading-normal" title="${p.specs}">
+                ${p.specs}
+            </p>
+
+            <!-- Price block -->
+            <div class="mt-1">
+                <div class="flex justify-between items-center h-4 mb-0.5">
+                    ${hasDiscount ? `<span class="text-xs text-gray-500 line-through">฿${p.oldPrice.toLocaleString()}</span>` : `<span></span>`}
+                    <span class="warranty-badge flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                        <i class="fa-solid fa-shield-halved text-cyan-400"></i> ประกัน ${warranty}
+                    </span>
+                </div>
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-xl font-black text-cyan-400">฿${p.price.toLocaleString()}</span>
+                    <span class="text-[10px] text-emerald-500 font-semibold">จัดส่งฟรี</span>
+                </div>
+            </div>
+
+            <!-- Discount badge + wishlist/compare -->
+            <div class="flex items-center justify-between mb-2.5">
+                ${hasDiscount ? `<span class="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">-฿${discountAmount.toLocaleString()}</span>` : `<span class="text-[10px] text-gray-500">*ราคาเฉพาะออนไลน์</span>`}
+            </div>
+
+            <!-- Buy button -->
+            <button onclick="addToCart('${p.id}')" class="buy-btn w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-md shadow-cyan-500/20 transition duration-200">
+                <i class="fa-solid fa-cart-shopping"></i> ${translations[currentLang].buyNow}
+            </button>
+
+            <!-- Sold count -->
+            <div class="text-center text-[10px] text-gray-500 mt-2 flex items-center justify-center gap-1">
+                <i class="fa-regular fa-eye"></i> ${soldLabel}
+            </div>
+        </div>
+    `;
+    }).join('');
+}
+
+function filterProducts() {
+    const searchInput = document.getElementById('searchInput');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+
+    let filtered = products.filter(p => {
+        const matchesCategory = currentCategory === 'all' || p.category === currentCategory;
+        const matchesBrand = currentBrand === 'all' || p.brand.toLowerCase() === currentBrand.toLowerCase();
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm) || p.specs.toLowerCase().includes(searchTerm);
+
+        return matchesCategory && matchesBrand && matchesSearch;
+    });
+
+    renderProducts(filtered);
+}
+
+function filterCategory(category) {
+    currentCategory = category;
+    currentBrand = 'all';
+    filterProducts();
+}
+
+function filterBrand(brand) {
+    currentBrand = brand;
+    filterProducts();
+}
+
+// ==========================================
+// CART SYSTEM
+// ==========================================
+function addToCart(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const existingItem = cart.find(item => item.id === productId);
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({ ...product, quantity: 1 });
+    }
+
+    updateCartCount();
+    renderCartItems();
+}
+
+function updateCartCount() {
+    const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const cartCountEl = document.getElementById('cartCount');
+    if (cartCountEl) cartCountEl.innerText = totalCount;
+}
+
+function renderCartItems() {
+    const container = document.getElementById('cartItemsContainer');
+    const totalEl = document.getElementById('cartTotalPrice');
+    if (!container) return;
+
+    if (cart.length === 0) {
+        container.innerHTML = `<p class="text-center text-gray-400 text-sm py-8">${translations[currentLang].cartEmpty}</p>`;
+        if (totalEl) totalEl.innerText = '฿0';
+        return;
+    }
+
+    let total = 0;
+    container.innerHTML = cart.map(item => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        return `
+            <div class="flex items-center gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <img src="${item.img}" class="w-12 h-12 object-cover rounded-lg">
+                <div class="flex-1 min-w-0">
+                    <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                    <p class="text-xs text-cyan-400 font-bold">฿${item.price.toLocaleString()}</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <button onclick="changeQuantity(${item.id}, -1)" class="w-5 h-5 bg-slate-800 text-gray-300 rounded hover:bg-slate-700 flex items-center justify-center text-xs">-</button>
+                        <span class="text-xs font-bold">${item.quantity}</span>
+                        <button onclick="changeQuantity(${item.id}, 1)" class="w-5 h-5 bg-slate-800 text-gray-300 rounded hover:bg-slate-700 flex items-center justify-center text-xs">+</button>
+                    </div>
+                </div>
+                <button onclick="removeFromCart(${item.id})" class="text-red-400 hover:text-red-300 text-xs p-1">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    if (totalEl) totalEl.innerText = `฿${total.toLocaleString()}`;
+}
+
+function changeQuantity(id, delta) {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+
+    item.quantity += delta;
+    if (item.quantity <= 0) {
+        removeFromCart(id);
+    } else {
+        updateCartCount();
+        renderCartItems();
+    }
+}
+
+function removeFromCart(id) {
+    cart = cart.filter(i => i.id !== id);
+    updateCartCount();
+    renderCartItems();
+}
+
+function toggleCartModal() {
+    const modal = document.getElementById('cartModal');
+    if (modal) {
+        modal.classList.toggle('hidden');
+        renderCartItems();
+    }
+}
+
+function checkout() {
+    if (cart.length === 0) {
+        alert(currentLang === 'th' ? 'กรุณาเลือกสินค้าก่อนทำการสั่งซื้อ' : 'Please select products before checkout.');
+        return;
+    }
+    alert(currentLang === 'th' ? 'สั่งซื้อสินค้าเรียบร้อยแล้ว! ขอบคุณที่ใช้บริการ COMPUNG' : 'Order placed successfully! Thank you for using COMPUNG.');
+    cart = [];
+    updateCartCount();
+    toggleCartModal();
+}
+
+function toggleTheme() {
+    document.body.classList.toggle('light-mode');
+    const icon = document.getElementById('themeIcon');
+    if (icon) {
+        icon.className = document.body.classList.contains('light-mode') ? 'fa-solid fa-moon text-lg' : 'fa-solid fa-sun text-lg';
+    }
+}
+
+// ==========================================
+// AUTH & USER DATABASE SYSTEM
+// ==========================================
+
+let authMode = 'login'; // 'login', 'register'
+
+// ตัวแปรเก็บข้อมูลผู้สมัครสมาชิก (มีตัวอย่างบัญชีเริ่มต้นให้ทดสอบ)
+let users = [
+    { username: "admin", email: "admin@example.com", password: "123" }
+];
+
+function toggleAuthModal() {
+    const modal = document.getElementById('authModal');
+    if (modal) {
+        modal.classList.toggle('hidden');
+        resetAuthForm();
+    }
+}
+
+function resetAuthForm() {
+    authMode = 'login';
+    document.getElementById('authForm').reset();
+    document.getElementById('usernameContainer').classList.remove('hidden');
+    document.getElementById('passwordContainer').classList.remove('hidden');
+    document.getElementById('emailContainer').classList.add('hidden');
+    document.getElementById('authToggleFooter').classList.remove('hidden');
+    updateAuthUI();
+}
+
+function switchAuthMode() {
+    authMode = (authMode === 'login') ? 'register' : 'login';
+    updateAuthUI();
+}
+
+function updateAuthUI() {
+    const title = document.getElementById('authTitle');
+    const emailContainer = document.getElementById('emailContainer');
+    const submitBtn = document.getElementById('authSubmitBtn');
+    const toggleText = document.getElementById('authToggleText');
+    const btnToggle = document.getElementById('authBtnToggle');
+
+    if (authMode === 'login') {
+        title.innerText = translations[currentLang].loginTitle;
+        emailContainer.classList.add('hidden');
+        submitBtn.innerText = translations[currentLang].submitBtn;
+        toggleText.innerText = translations[currentLang].noAccountText;
+        btnToggle.innerText = translations[currentLang].registerToggleBtn;
+    } else if (authMode === 'register') {
+        title.innerText = translations[currentLang].registerTitle;
+        emailContainer.classList.remove('hidden');
+        submitBtn.innerText = translations[currentLang].submitBtn;
+        toggleText.innerText = translations[currentLang].hasAccountText;
+        btnToggle.innerText = translations[currentLang].loginToggleBtn;
+    }
+}
+
+function handleAuth(e) {
+    e.preventDefault();
+
+    const usernameInput = document.getElementById('authUsername').value.trim();
+    const passwordInput = document.getElementById('authPassword').value;
+    const emailInput = document.getElementById('authEmail').value.trim();
+
+    // ----------------------------------------
+    // โหมดสมัครสมาชิก (REGISTER)
+    // ----------------------------------------
+    if (authMode === 'register') {
+        // เช็คว่ามีผู้ใช้นี้อยู่แล้วหรือยัง
+        const isExist = users.some(u => u.username === usernameInput || u.email === emailInput);
+        if (isExist) {
+            alert(currentLang === 'th' ? 'ชื่อผู้ใช้หรืออีเมลนี้มีอยู่ในระบบแล้ว!' : 'Username or Email already exists!');
+            return;
+        }
+
+        // บันทึกผู้ใช้ใหม่
+        users.push({
+            username: usernameInput,
+            email: emailInput,
+            password: passwordInput
+        });
+
+        alert(currentLang === 'th' ? 'สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ' : 'Registration successful! Please log in.');
+        authMode = 'login';
+        resetAuthForm();
+        return;
+    }
+
+    // ----------------------------------------
+    // โหมดเข้าสู่ระบบ (LOGIN)
+    // ----------------------------------------
+    if (authMode === 'login') {
+        // ค้นหาบัญชีที่ Username หรือ Email ตรง และ Password ตรง
+        const userMatch = users.find(u =>
+            (u.username === usernameInput || u.email === usernameInput) && u.password === passwordInput
+        );
+
+        // ถ้าใส่ผิด / ไม่พบข้อมูล ให้แสดง Error
+        if (!userMatch) {
+            alert(currentLang === 'th' ? 'ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง!' : 'Invalid username/email or password!');
+            return;
+        }
+
+        // เข้าสู่ระบบสำเร็จ
+        const userText = document.getElementById('userStatusText');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        if (userText) userText.innerText = userMatch.username;
+        if (logoutBtn) logoutBtn.classList.remove('hidden');
+
+        alert(currentLang === 'th' ? `ยินดีต้อนรับคุณ ${userMatch.username}` : `Welcome ${userMatch.username}`);
+        toggleAuthModal();
+    }
+}
+
+function handleLogout() {
+    const userText = document.getElementById('userStatusText');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (userText) userText.innerText = translations[currentLang].loginRegister;
+    if (logoutBtn) logoutBtn.classList.add('hidden');
+}
+
+function stopProductAutoScroll() {
+    if (productScrollInterval) clearInterval(productScrollInterval);
+}
+
+// ==========================================
+// HERO BANNER SLIDER SYSTEM
+// ==========================================
+let currentSlideIndex = 0;
+let autoSlideTimer = null;
+
+function updateSlider() {
+    const slider = document.getElementById("heroSlider");
+    const dots = document.querySelectorAll("#sliderDots button");
+    const slides = document.querySelectorAll("#heroSlider img");
+
+    if (!slider || slides.length === 0) return;
+
+    slider.style.transform = `translateX(-${currentSlideIndex * 100}%)`;
+
+    dots.forEach((dot, index) => {
+        dot.className = index === currentSlideIndex
+            ? "w-8 h-3 rounded-full bg-cyan-400 transition-all duration-300"
+            : "w-3 h-3 rounded-full bg-white/50 hover:bg-white transition-all duration-300";
+    });
+}
+
+function nextSlide() {
+    const slides = document.querySelectorAll("#heroSlider img");
+    if (slides.length === 0) return;
+    currentSlideIndex = (currentSlideIndex + 1) % slides.length;
+    updateSlider();
+    resetSlideTimer();
+}
+
+function prevSlide() {
+    const slides = document.querySelectorAll("#heroSlider img");
+    if (slides.length === 0) return;
+    currentSlideIndex = (currentSlideIndex - 1 + slides.length) % slides.length;
+    updateSlider();
+    resetSlideTimer();
+}
+
+function goToSlide(index) {
+    currentSlideIndex = index;
+    updateSlider();
+    resetSlideTimer();
+}
+
+function startSlideTimer() {
+    autoSlideTimer = setInterval(nextSlide, 3000);
+}
+
+function resetSlideTimer() {
+    clearInterval(autoSlideTimer);
+    startSlideTimer();
+}
+
+// Initialization
+document.addEventListener("DOMContentLoaded", () => {
+    updateSlider();
+    startSlideTimer();
+
+    // การเริ่มเลื่อนอัตโนมัติของ #productGrid และ #hotProductGrid
+    // ถูกจัดการรวมศูนย์อยู่แล้วใน initAutoScrollEvents() ด้านล่างของไฟล์นี้
+});
+// ==========================================
+// DOUBLE PROMO BANNER SLIDERS (LOOP SYSTEM)
+// ==========================================
+const promoState = {
+    1: { index: 0, timer: null, id: 'promoSlider1', dotsId: 'promoDots1' },
+    2: { index: 0, timer: null, id: 'promoSlider2', dotsId: 'promoDots2' }
+};
+
+function initPromoSliders() {
+    [1, 2].forEach(id => {
+        setupPromoDots(id);
+        updatePromoSlider(id);
+        startPromoTimer(id);
+    });
+}
+
+function setupPromoDots(id) {
+    const dotsContainer = document.getElementById(promoState[id].dotsId);
+    const slides = document.querySelectorAll(`#${promoState[id].id} img`);
+    if (!dotsContainer || slides.length === 0) return;
+
+    dotsContainer.innerHTML = Array.from(slides).map((_, i) =>
+        `<button onclick="goToPromoSlide(${id}, ${i})" class="w-2.5 h-2.5 rounded-full bg-white/40 transition-all duration-300"></button>`
+    ).join('');
+}
+
+function updatePromoSlider(id) {
+    const slider = document.getElementById(promoState[id].id);
+    const dots = document.querySelectorAll(`#${promoState[id].dotsId} button`);
+    const slides = document.querySelectorAll(`#${promoState[id].id} img`);
+
+    if (!slider || slides.length === 0) return;
+
+    slider.style.transform = `translateX(-${promoState[id].index * 100}%)`;
+
+    dots.forEach((dot, index) => {
+        dot.className = index === promoState[id].index
+            ? "w-6 h-2.5 rounded-full bg-cyan-400 transition-all duration-300 shadow-md"
+            : "w-2.5 h-2.5 rounded-full bg-white/40 hover:bg-white transition-all duration-300";
+    });
+}
+
+function nextPromoSlide(id) {
+    const slides = document.querySelectorAll(`#${promoState[id].id} img`);
+    if (slides.length === 0) return;
+    promoState[id].index = (promoState[id].index + 1) % slides.length;
+    updatePromoSlider(id);
+    resetPromoTimer(id);
+}
+
+function prevPromoSlide(id) {
+    const slides = document.querySelectorAll(`#${promoState[id].id} img`);
+    if (slides.length === 0) return;
+    promoState[id].index = (promoState[id].index - 1 + slides.length) % slides.length;
+    updatePromoSlider(id);
+    resetPromoTimer(id);
+}
+
+function goToPromoSlide(id, index) {
+    promoState[id].index = index;
+    updatePromoSlider(id);
+    resetPromoTimer(id);
+}
+
+function startPromoTimer(id) {
+    promoState[id].timer = setInterval(() => nextPromoSlide(id), 3500 + (id * 500)); // สลับเวลากันเล็กน้อยให้ดูเป็นธรรมชาติ
+}
+
+function resetPromoTimer(id) {
+    clearInterval(promoState[id].timer);
+    startPromoTimer(id);
+}
+
+// เรียกใช้งานเมื่อโหลดหน้าเว็บเรียบร้อย
+document.addEventListener("DOMContentLoaded", () => {
+    initPromoSliders();
+});
+// ==========================================
+// THEME SWITCHER WITH LOCALSTORAGE SUPPORT
+// ==========================================
+
+function toggleTheme() {
+    document.body.classList.toggle('light-mode');
+    const isLight = document.body.classList.contains('light-mode');
+
+    // บันทึกสถานะธีมลง LocalStorage
+    localStorage.setItem('compang_theme', isLight ? 'light' : 'dark');
+
+    // อัปเดตไอคอนปุ่มสลับธีมทั้ง Desktop และ Mobile
+    updateThemeIcons(isLight);
+}
+
+function updateThemeIcons(isLight) {
+    const desktopIcon = document.getElementById('themeIcon');
+    const mobileBtn = document.querySelector('button[onclick="toggleTheme()"] i');
+
+    const iconClass = isLight ? 'fa-solid fa-moon text-lg text-indigo-600' : 'fa-solid fa-sun text-lg text-yellow-400';
+    const mobileIconClass = isLight ? 'fa-solid fa-moon text-sm text-indigo-600' : 'fa-solid fa-sun text-sm text-yellow-400';
+
+    if (desktopIcon) desktopIcon.className = iconClass;
+    if (mobileBtn) mobileBtn.className = mobileIconClass;
+}
+
+// โหลดธีมตั้งต้นเมื่อเปิดหน้าเว็บ
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('compang_theme');
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+        updateThemeIcons(true);
+    }
+});
+// ==========================================
+// ADMIN MODAL & CRUD FUNCTIONS
+// ==========================================
+
+// เปิด Modal จัดการสินค้า
+function openAdminModal() {
+    const modal = document.getElementById('adminModal');
+    if (modal) {
+        resetAdminForm();
+        modal.classList.remove('hidden');
+    }
+}
+
+// ปิด Modal จัดการสินค้า
+function closeAdminModal() {
+    const modal = document.getElementById('adminModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        resetAdminForm();
+    }
+}
+
+// ล้างค่าในฟอร์ม Admin
+function resetAdminForm() {
+    const form = document.getElementById('productForm');
+    const editId = document.getElementById('editProductId');
+    const title = document.getElementById('adminFormTitle');
+
+    if (form) form.reset();
+    if (editId) editId.value = '';
+    if (title) title.innerText = translations[currentLang].createProductTitle;
+}
+
+// บันทึก/เพิ่ม/แก้ไข สินค้า
+async function saveProduct(e) {
+    if (e) e.preventDefault();
+
+    const editId = document.getElementById('editProductId').value;
+    let productIdNum;
+
+    if (editId) {
+        // กรณี "แก้ไข" สินค้าเดิม
+        productIdNum = Number(editId);
+    } else {
+        // กรณี "เพิ่มใหม่" -> คัดกรองเอาเฉพาะ ID ที่เป็นตัวเลขสมบูรณ์มาหาค่าสูงสุด
+        const validIds = products
+            .map(p => Number(p.id))
+            .filter(id => !isNaN(id) && id > 0);
+
+        const maxId = validIds.length > 0 ? Math.max(...validIds) : 0;
+        productIdNum = maxId + 1;
+    }
+
+    // กำหนด Document ID ใน Firestore ให้เป็นรูปแบบ id-1, id-2, id-3...
+    const customDocId = `id-${productIdNum}`;
+
+    // ถ้าเป็นการแก้ไขสินค้าเดิม ให้คงค่ายอดขาย (sold) เดิมไว้ ไม่รีเซ็ตเป็น 0
+    const existingProduct = editId ? products.find(p => String(p.id) === String(editId)) : null;
+    const soldCount = existingProduct ? (existingProduct.sold || 0) : 0;
+
+    const productData = {
+        id: productIdNum, // บันทึก id เป็นตัวเลขเรียงกัน
+        name: document.getElementById('pName').value.trim(),
+        category: document.getElementById('pCategory').value,
+        productType: document.getElementById('pSubCategory').value || 'normal', // ชนิดสินค้า: normal / recommended / hot / flashsale
+        brand: document.getElementById('pBrand').value.trim(),
+        oldPrice: parseFloat(document.getElementById('pOldPrice').value) || 0,
+        price: parseFloat(document.getElementById('pPrice').value) || 0,
+        specs: document.getElementById('pSpecs').value.trim(),
+        img: document.getElementById('pImg').value.trim(),
+        warranty: document.getElementById('pWarranty').value.trim() || '1Y',
+        sold: soldCount
+    };
+
+    try {
+        await db.collection("products").doc(customDocId).set(productData, { merge: true });
+
+        alert(`บันทึกข้อมูลสำเร็จ! รหัสสินค้า ID: ${productIdNum}`);
+        if (typeof closeAdminModal === 'function') closeAdminModal();
+
+        await fetchProductsFromFirebase(); // ดึงข้อมูลใหม่
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการบันทึกสินค้า:", error);
+        alert("ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
+    }
+}
+
+// แก้ไขฟังก์ชัน editProduct ให้เปรียบเทียบ ID ได้ทั้งชนิด String และ Number
+function editProduct(id) {
+    // เปลี่ยนจาก prod.id === id เป็น String(prod.id) === String(id)
+    const p = products.find(prod => String(prod.id) === String(id));
+    if (!p) {
+        console.error("ไม่พบข้อมูลสินค้า ID:", id);
+        return;
+    }
+
+    document.getElementById('editProductId').value = p.id;
+    document.getElementById('pName').value = p.name;
+    document.getElementById('pCategory').value = p.category;
+    document.getElementById('pSubCategory').value = p.productType || 'normal';
+    document.getElementById('pBrand').value = p.brand;
+    document.getElementById('pOldPrice').value = p.oldPrice;
+    document.getElementById('pPrice').value = p.price;
+    document.getElementById('pSpecs').value = p.specs;
+    document.getElementById('pImg').value = p.img;
+    document.getElementById('pWarranty').value = p.warranty || '1Y';
+
+    const title = document.getElementById('adminFormTitle');
+    if (title) title.innerText = translations[currentLang].editProductTitle;
+
+    const modal = document.getElementById('adminModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+// ลบสินค้า
+async function deleteProduct(id) {
+    const confirmMsg = (typeof currentLang !== 'undefined' && currentLang === 'th')
+        ? 'คุณต้องการลบสินค้านี้ใช่หรือไม่?'
+        : 'Are you sure you want to delete this product?';
+
+    if (confirm(confirmMsg)) {
+        try {
+            // ค้นหาสินค้าเพื่อดึง firestoreId หรือใช้รูปแบบ id-${id}
+            const item = products.find(p => String(p.id) === String(id));
+            const docIdToDelete = (item && item.firestoreId) ? item.firestoreId : `id-${id}`;
+
+            await db.collection("products").doc(docIdToDelete).delete();
+            alert("ลบสินค้าเรียบร้อยแล้ว!");
+
+            await fetchProductsFromFirebase();
+        } catch (error) {
+            console.error("เกิดข้อผิดพลาดในการลบสินค้า:", error);
+            alert("ไม่สามารถลบสินค้าได้ กรุณาลองใหม่อีกครั้ง");
+        }
+    }
+}
+// ==========================================
+// AUTO SCROLL CONTINUOUS (เลื่อนซ้ายตลอดเวลาแบบไหลลื่น)
+// ==========================================
+// เก็บ Interval แยกตาม gridId เพื่อให้เลื่อนได้พร้อมกันหลายแถว (แนะนำ + ยอดฮิต)
+const productScrollIntervals = {};
+
+function startProductAutoScroll(gridId = 'productGrid') {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+
+    // เคลียร์ Interval เก่าของแถวนี้เพื่อป้องกันการรันซ้อน
+    if (productScrollIntervals[gridId]) clearInterval(productScrollIntervals[gridId]);
+
+    // เลื่อนทีละ 1px ทุกๆ 15ms เพื่อความลื่นไหลระดับ 60fps
+    productScrollIntervals[gridId] = setInterval(() => {
+        // เช็คว่าเลื่อนจนสุดขอบขวาแล้วหรือยัง
+        const maxScrollLeft = grid.scrollWidth - grid.clientWidth;
+
+        if (grid.scrollLeft >= maxScrollLeft - 2) {
+            // เมื่อสุดขอบ ให้รีเซ็ตกลับไปซ้ายสุดทันที
+            grid.scrollLeft = 0;
+        } else {
+            // ขยับไปทางขวาเรื่อยๆ ทีละ 1.5px
+            grid.scrollLeft += 1.5;
+        }
+    }, 15);
+}
+
+function stopProductAutoScroll(gridId = 'productGrid') {
+    if (productScrollIntervals[gridId]) {
+        clearInterval(productScrollIntervals[gridId]);
+    }
+}
+
+// เริ่มทำงานเมื่อ Render สินค้าเสร็จสิ้น และผูก Event สัมผัส (ใช้ได้กับหลายแถว)
+function initAutoScrollEvents(gridId = 'productGrid') {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+
+    startProductAutoScroll(gridId);
+
+    // หยุดเลื่อนชั่วคราวเมื่อผู้ใช้เอาเมาส์ชี้ หรือแตะสัมผัสบนมือถือ
+    grid.addEventListener('mouseenter', () => stopProductAutoScroll(gridId));
+    grid.addEventListener('mouseleave', () => startProductAutoScroll(gridId));
+    grid.addEventListener('touchstart', () => stopProductAutoScroll(gridId), { passive: true });
+    grid.addEventListener('touchend', () => startProductAutoScroll(gridId));
+}
+
+// เรียกฟังก์ชันหลังจากที่ดึงข้อมูลสินค้ามาแสดงเรียบร้อยแล้ว
+document.addEventListener('DOMContentLoaded', () => {
+    // หน่วงเวลาเล็กน้อยให้ Firebase / DOM สร้างการแสดงผลให้เสร็จก่อนเริ่มเลื่อน
+    setTimeout(() => {
+        initAutoScrollEvents('productGrid');
+        initAutoScrollEvents('hotProductGrid');
+        initAutoScrollEvents('flashSaleProductGrid');
+        initAutoScrollEvents('normalProductGrid');
+    }, 1000);
+});
+// ==========================================
+// FULL-SCREEN ANTI-COPY & RANDOM INSULT SYSTEM
+// ==========================================
+
+// คลังคำด่าสำหรับสุ่ม
+const insultList = [
+    "พวกขี้ก็อป สวะ กันคนก็อปเว็บ",
+    "ไม่มีปัญญาเขียนเองหรือไง ขี้ก็อป!",
+    "สมองมีไว้กั้นหูหรือไง ถึงได้ชอบก็อปงานคนอื่น!",
+    "หน้าด้านก็อป โค้ดนี้ใช้เหงื่อและแรงสร้างนะ!",
+    "ก็อปไปก็ไม่เจริญหรอก สภาพ!",
+    "อย่าหาทำ! คิดเองเขียนเองไม่เป็นหรือไง?",
+    "แจ้งเตือน: ตรวจพบพฤติกรรมขี้ก็อปเกรดต่ำ!"
+];
+
+let currentInsult = insultList[0];
+
+// ฟังก์ชันสุ่มคำด่าใหม่
+function randomizeWarningText() {
+    const randomIndex = Math.floor(Math.random() * insultList.length);
+    currentInsult = insultList[randomIndex];
+    
+    const displayEl = document.getElementById('warningTextDisplay');
+    if (displayEl) {
+        displayEl.innerText = currentInsult;
+    }
+}
+
+// ฟังก์ชันเปิด Modal เตือนเต็มหน้าจอ
+function showCopyWarning() {
+    randomizeWarningText(); // สุ่มคำด่าใหม่ทุกครั้งที่เปิด Modal
+    const modal = document.getElementById('copyWarningModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+// ฟังก์ชันปิด Modal เตือน
+function closeCopyWarning() {
+    const modal = document.getElementById('copyWarningModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+(function() {
+    // 1. ดักจับปุ่ม F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+    document.addEventListener('keydown', function(e) {
+        const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+        
+        if (
+            e.key === 'F12' || 
+            e.keyCode === 123 || 
+            (isCmdOrCtrl && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) ||
+            (isCmdOrCtrl && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) ||
+            (isCmdOrCtrl && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) ||
+            (isCmdOrCtrl && (e.key === 'U' || e.key === 'u' || e.keyCode === 85))
+        ) {
+            e.preventDefault();
+            e.stopPropagation();
+            showCopyWarning();
+            return false;
+        }
+    });
+
+    // 2. ดักจับการคลิกขวา (Right Click)
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        showCopyWarning();
+        return false;
+    });
+
+    // 3. ป้องกันการ Copy (เปลี่ยนข้อความใน Clipboard เป็นคำด่าที่สุ่มมา + แสดง Modal)
+    document.addEventListener('copy', function(e) {
+        e.preventDefault();
+        if (e.clipboardData) {
+            e.clipboardData.setData('text/plain', currentInsult);
+        } else if (window.clipboardData) {
+            window.clipboardData.setData('Text', currentInsult);
+        }
+        showCopyWarning();
+    });
+
+    // 4. ล้าง Console และพ่นข้อความเตือนใน Console
+    setInterval(function() {
+        console.clear();
+        console.log("%c" + currentInsult, "color: red; font-size: 28px; font-weight: bold; -webkit-text-stroke: 1px black;");
+    }, 2000);
+})();
